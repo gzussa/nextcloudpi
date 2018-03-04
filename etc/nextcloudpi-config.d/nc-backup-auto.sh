@@ -22,26 +22,10 @@ BACKUPDAYS_=7
 BACKUPLIMIT_=4
 DESCRIPTION="Periodic backups"
 
-install() 
-{
-  cat > /etc/systemd/system/nc-backup.service <<EOF
-[Unit]
-Description=Backup Nextcloud instance
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/ncp-backup-auto
-
-[Install]
-WantedBy=default.target
-EOF
-}
-
 configure()
 {
   [[ $ACTIVE_ != "yes" ]] && { 
-    systemctl stop    nc-backup.timer
-    systemctl disable nc-backup.timer
+    rm /etc/cron.d/ncp-backup-auto
     echo "automatic backups disabled"
     return 0
   }
@@ -54,24 +38,13 @@ sudo -u www-data php /var/www/nextcloud/occ maintenance:mode --off
 EOF
   chmod +x /usr/local/bin/ncp-backup-auto
 
-  cat > /etc/systemd/system/nc-backup.timer <<EOF
-[Unit]
-Description=Timer to backup NC periodically
+  echo "0  3  */${BACKUPDAYS_}  *  *  root  /usr/local/bin/ncp-backup-auto" > /etc/cron.d/ncp-backup-auto
+  service cron restart
 
-[Timer]
-OnBootSec=${BACKUPDAYS_}days
-OnUnitActiveSec=${BACKUPDAYS_}days
-Unit=nc-backup.service
-
-[Install]
-WantedBy=timers.target
-EOF
-
-  systemctl daemon-reload
-  systemctl enable nc-backup.timer
-  systemctl start  nc-backup.timer
   echo "automatic backups enabled"
 }
+
+install() { :; }
 
 # License
 #
